@@ -11,7 +11,7 @@ def main():
         description="Run one scenario of the Kidashi ABM")
     parser.add_argument("--steps", type=int, default=40,
                         help="Number of simulation steps (seasons)")
-    parser.add_argument("--num_farmers", type=int, default=500,
+    parser.add_argument("--num_farmers", type=int, default=50,
                         help="Number of farmer agents")
     parser.add_argument("--num_traders", type=int, default=10,
                         help="Number of trader agents")

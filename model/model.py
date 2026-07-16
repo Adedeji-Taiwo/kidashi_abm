@@ -405,26 +405,76 @@ class KidashiModel(mesa.Model):
         mu = np.mean(subset)
         return float(np.std(subset) / mu) if mu > 0 else 0.0
 
-    # ------------------------------------------------------------------
+       # ------------------------------------------------------------------
     # Main step
     # ------------------------------------------------------------------
 
     def step(self) -> None:
         """
-        One simulation season:
-          1. Apply weather + trade shocks
-          2. Activate all agents (randomised)
-          3. Collect data
-          4. Reset within-step accumulators
+        One simulation season with explicit staged order.
+
+        Academic/policy logic:
+          1. Weather and trade shocks occur.
+          2. Fintech provider disburses credit before production.
+          3. Farmers produce with or without credit-enabled yield/spoilage effects.
+          4. Farmers allocate harvest between aggregator and local market channels.
+          5. Traders procure from aggregator-channel supply and clear inventory.
+          6. Farmers sell remaining local/direct-market supply.
+          7. Farmers service debt.
+          8. Farmers adapt crop portfolio for the next season.
+          9. Model indicators are collected.
+          10. Within-step market accumulators are reset.
         """
+
+        # 1. Apply exogenous shocks
         self._apply_weather_shock()
         self._apply_trade_shock()
         self._update_price_volatility()
 
-        # Randomised agent activation (Mesa 3.5 AgentSet)
-        self.agents.shuffle_do("step")
+        # 2. Fintech phase: credit arrives before production
+        if self.fintech_provider is not None:
+            self.fintech_provider.disburse()
+            self.fintech_provider.update_par()
 
+        # 3. Production phase
+        farmers_prod = list(self.farmers)
+        self.rng.shuffle(farmers_prod)
+        for farmer in farmers_prod:
+            farmer.produce()
+
+        # 4. Sales channel allocation phase
+        farmers_allocate = list(self.farmers)
+        self.rng.shuffle(farmers_allocate)
+        for farmer in farmers_allocate:
+            farmer.allocate_sales_channels()
+
+        # 5. Trader procurement and market clearing phase
+        traders = list(self.traders)
+        self.rng.shuffle(traders)
+        for trader in traders:
+            trader.procure()
+            trader.sell_inventory()
+
+        # 6. Farmer local/direct sales phase
+        farmers_sell = list(self.farmers)
+        self.rng.shuffle(farmers_sell)
+        for farmer in farmers_sell:
+            farmer.sell()
+
+        # 7. Debt service phase
+        farmers_debt = list(self.farmers)
+        self.rng.shuffle(farmers_debt)
+        for farmer in farmers_debt:
+            farmer.service_debt()
+
+        # 8. Portfolio adaptation for next season
+        farmers_adapt = list(self.farmers)
+        self.rng.shuffle(farmers_adapt)
+        for farmer in farmers_adapt:
+            farmer.decide_portfolio()
+
+        # 9. Collect data
         self.datacollector.collect(self)
 
-        # Reset within-step market volume
+        # 10. Reset within-step market volume
         self.market_volume = {c: 0.0 for c in CROPS}

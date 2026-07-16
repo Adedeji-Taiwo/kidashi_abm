@@ -154,6 +154,13 @@ class Farmer(mesa.Agent):
         self.production:     Dict[str, float] = {c: 0.0 for c in CROPS}
         self.spoilage:       Dict[str, float] = {c: 0.0 for c in CROPS}
 
+        # --- Sales channel allocation ---
+        # Quantity reserved for trader/aggregator procurement
+        self.aggregator_supply: Dict[str, float] = {c: 0.0 for c in CROPS}
+
+        # Quantity sold directly/local spot market
+        self.local_supply: Dict[str, float] = {c: 0.0 for c in CROPS}
+
         # --- Fintech state ---
         self.has_credit:        bool = False
         self.credit_outstanding: float = 0.0
@@ -256,45 +263,85 @@ class Farmer(mesa.Agent):
             self.production[crop] = max(0.0, yield_mt - spoiled)
             self.spoilage[crop] = spoiled
 
+    def allocate_sales_channels(self) -> None:
+        """
+        Split harvested production into:
+        1. Aggregator/trader channel
+        2. Local/direct market channel
+
+        Fintech-enabled farmers are assumed to have stronger access to
+        structured buyers and Farm-to-Factory style procurement channels.
+        """
+
+        aggregator_share = 0.60 if self.has_credit else 0.30
+
+        for crop in CROPS:
+            qty = self.production.get(crop, 0.0)
+
+            # Safety guard against NaN or negative production
+            if qty is None or not np.isfinite(qty) or qty <= 0:
+                self.aggregator_supply[crop] = 0.0
+                self.local_supply[crop] = 0.0
+                continue
+
+            self.aggregator_supply[crop] = float(qty * aggregator_share)
+            self.local_supply[crop] = float(qty * (1.0 - aggregator_share))
+
     # ------------------------------------------------------------------
     # 3. Sales
     # ------------------------------------------------------------------
 
     def sell(self) -> None:
         """
-        Multi-channel sale. Fintech reduces distress discount by accelerating
-        the payment cycle (Kidashi: 60-90 days → <72 hours).
+        Sell only the local/direct-market share of production.
 
-        Distress discount = f(payment_cycle_days) – longer cycle forces
-        cheaper immediate cash sales.
+        The aggregator/trader share is handled separately by Trader.procure().
+        This prevents double-selling of the same harvest.
         """
         model = self.model
         income = 0.0
 
         for crop in CROPS:
-            qty = self.production[crop]
-            if qty <= 0:
+            qty = self.local_supply.get(crop, 0.0)
+
+            # Safety guard
+            if qty is None or not np.isfinite(qty) or qty <= 0:
+                self.local_supply[crop] = 0.0
                 continue
 
-            # Market price (model-level, endogenous)
             price = model.get_farmgate_price(crop, self)
 
-            # Distress discount: decreasing in payment cycle speed
-            # δ = 0.20 * (cycle_days / legacy_cycle_days) → up to 20% discount
+            # Safety guard for price
+            if price is None or not np.isfinite(price) or price <= 0:
+                price = BASELINE_PRICES[crop]
+
             cycle_ratio = self.payment_cycle_days / PAYMENT_CYCLE_DAYS_LEGACY
             distress_disc = 0.20 * min(1.0, cycle_ratio)
             effective_price = price * (1.0 - distress_disc)
 
+            # Safety guard for effective price
+            if not np.isfinite(effective_price) or effective_price <= 0:
+                effective_price = BASELINE_PRICES[crop] * 0.75
+
             revenue = qty * effective_price
-            income += revenue
 
-            # Record market volume
-            model.market_volume[crop] = model.market_volume.get(
-                crop, 0.0) + qty
+            if np.isfinite(revenue):
+                income += revenue
+                model.market_volume[crop] = model.market_volume.get(
+                    crop, 0.0) + qty
 
-        self.wealth += income
-        self.income_history.append(income)
-        self._update_nutrition_score(income)
+            # Local supply has now been sold
+            self.local_supply[crop] = 0.0
+
+        if np.isfinite(income):
+            self.wealth += income
+
+        # Final wealth guard
+        if not np.isfinite(self.wealth):
+            self.wealth = 5_000.0
+
+        self.income_history.append(income if np.isfinite(income) else 0.0)
+        self._update_nutrition_score(income if np.isfinite(income) else 0.0)
 
     # ------------------------------------------------------------------
     # 4. Debt service
@@ -332,14 +379,21 @@ class Farmer(mesa.Agent):
         """
         Simplified nutrition score: household caloric adequacy proxy.
         Score = min(1, income / subsistence_threshold).
-        Subsistence ≈ 180,000 NGN/season for 5-person HH (2023 WFP estimate).
         """
         SUBSISTENCE = 180_000.0
+
+        if income is None or not np.isfinite(income) or income < 0:
+            income = 0.0
+
         raw = income / SUBSISTENCE
-        # Exponential smoothing: carry forward history
+
         alpha = 0.4
-        self.nutrition_score = alpha * \
-            min(1.0, raw) + (1 - alpha) * self.nutrition_score
+        updated = alpha * min(1.0, raw) + (1 - alpha) * self.nutrition_score
+
+        if np.isfinite(updated):
+            self.nutrition_score = updated
+        else:
+            self.nutrition_score = 0.0
 
     # ------------------------------------------------------------------
     # Main step
@@ -521,15 +575,21 @@ class Trader(mesa.Agent):
     # ------------------------------------------------------------------
     # Procurement
     # ------------------------------------------------------------------
-
     def procure(self) -> None:
         """
-        Buy up to capacity from nearby farmers (spatial proximity or random
-        sample as proxy). Pay 90% of prevailing farmgate price.
+        Buy up to capacity from farmers' aggregator-channel supply.
+
+        Farmers reserve part of their harvest for structured buyers.
+        This avoids double-counting because local/direct sales are handled
+        separately in Farmer.sell().
         """
         model = self.model
         budget = self.capacity_mt * \
             model.get_expected_price(self.specialisation)
+
+        if not np.isfinite(budget) or budget <= 0:
+            return
+
         spent = 0.0
 
         candidates = list(model.rng.choice(
@@ -537,18 +597,49 @@ class Trader(mesa.Agent):
         ))
 
         for farmer in candidates:
-            qty = farmer.production.get(self.specialisation, 0.0)
-            if qty <= 0 or spent >= budget:
+            qty = farmer.aggregator_supply.get(self.specialisation, 0.0)
+
+            # Safety guard
+            if qty is None or not np.isfinite(qty) or qty <= 0 or spent >= budget:
+                farmer.aggregator_supply[self.specialisation] = 0.0
                 continue
+
             price = model.get_farmgate_price(
                 self.specialisation, farmer) * 0.90
-            affordable = min(qty, (budget - spent) / max(1, price))
+
+            # Safety guard for price
+            if price is None or not np.isfinite(price) or price <= 0:
+                price = BASELINE_PRICES[self.specialisation] * 0.90
+
+            affordable = min(qty, (budget - spent) / max(1.0, price))
+
+            if not np.isfinite(affordable) or affordable <= 0:
+                continue
+
             cost = affordable * price
 
+            if not np.isfinite(cost) or cost <= 0:
+                continue
+
             self.inventory[self.specialisation] += affordable
-            farmer.production[self.specialisation] -= affordable
-            farmer.wealth += affordable * price
+
+            # Reduce only the aggregator-channel supply
+            farmer.aggregator_supply[self.specialisation] = max(
+                0.0,
+                farmer.aggregator_supply[self.specialisation] - affordable
+            )
+
+            farmer.wealth += cost
+
+            # Wealth guard
+            if not np.isfinite(farmer.wealth):
+                farmer.wealth = 5_000.0
+
             spent += cost
+
+            model.market_volume[self.specialisation] = model.market_volume.get(
+                self.specialisation, 0.0
+            ) + affordable
 
     # ------------------------------------------------------------------
     # Market clearing / stochastic spoilage

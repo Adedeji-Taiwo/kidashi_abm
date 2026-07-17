@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Live Demo](https://img.shields.io/badge/demo-Streamlit-FF4B4B.svg)](https://kidashiabm.streamlit.app/)
 
-**Live showcase & interactive simulator:** [kidashiabm.streamlit.app](https://kidashiabm.streamlit.app/) - configure a scenario and run KidashiModel from the browser, no install required.
+**Live showcase & interactive simulator:** [kidashiabm.streamlit.app](https://kidashiabm.streamlit.app/) - configure a scenario and run KidashiModel from the browser, no installation required.
 
 ---
 

@@ -5,6 +5,9 @@
 [![Mesa 3.5](https://img.shields.io/badge/mesa-3.5-green.svg)](https://mesa.readthedocs.io/)
 [![Tests](https://img.shields.io/badge/tests-39%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/demo-Streamlit-FF4B4B.svg)](https://kidashiabm.streamlit.app/)
+
+**Live showcase & interactive simulator:** [kidashiabm.streamlit.app](https://kidashiabm.streamlit.app/) - configure a scenario and run KidashiModel from the browser, no install required.
 
 ---
 
@@ -14,7 +17,7 @@ This repository contains an Agent-Based Model (ABM) developed to investigate a c
 
 > **How do fintech-led liquidity provision and agricultural production diversity jointly shape farmgate price resilience and smallholder welfare under domestic supply shocks and international market disruptions?**
 
-The model is directly informed by operational experience at **XchangeBox Solutions Ltd.** (Kano/Northern Nigeria), where the *Kidashi* trust-circle credit product and *Farm-to-Factory* invoice financing demonstrably reduced smallholder payment cycles from 60–90 days to under 72 hours. The *TomatoPro* stochastic optimisation tool (GIZ-funded) provided calibration anchors for post-harvest spoilage reduction (55%) and profit uplift (18.6%) under financial liquidity.
+The model is directly informed by operational experience at **XchangeBox Solutions Ltd.** (Kano/Northern Nigeria), where the *Kidashi* trust-circle credit product and *Farm-to-Factory* invoice financing demonstrably reduced smallholder payment cycles from 60–90 days to under 72 hours. The *TomatoPro* stochastic optimisation tool provided calibration anchors for post-harvest spoilage reduction (55%) and profit uplift (18.6%) under financial liquidity.
 
 ---
 
@@ -72,6 +75,10 @@ kidashi_abm/
 │   ├── agents.py          # Farmer, FintechProvider, Trader agents
 │   └── model.py           # KidashiModel: grid, shocks, market, DataCollector
 │
+├── components/
+│   ├── __init__.py
+│   └── live_figure.py     # FIG 01 -- client-side live canvas animation
+│
 ├── experiments/
 │   ├── __init__.py
 │   ├── batch_run.py       # 7-scenario batch runner; penetration sweep
@@ -89,9 +96,11 @@ kidashi_abm/
 │   └── synthetic/         # Batch run CSVs (generated at runtime)
 │
 ├── analysis/figures/      # PNG figures (generated at runtime)
-├── results/               # Demo run outputs
+├── results/                # Demo run outputs
 │
-├── run_model.py           # Single-scenario CLI entry point
+├── app.py                  # KidashiSim showcase + interactive Streamlit simulator
+├── run_model.py             # Single-scenario CLI entry point
+├── KidashiSim_User_Manual.pdf
 ├── requirements.txt
 ├── .gitignore
 └── README.md
@@ -100,6 +109,8 @@ kidashi_abm/
 ---
 
 ### Quick Start
+
+Prefer not to install anything? The [hosted simulator](https://kidashiabm.streamlit.app/) runs the same model in your browser - open the Case Studies page and click **Launch simulator** on the live Nigeria card.
 
 ```bash
 # 1. Clone and install
@@ -122,6 +133,9 @@ python -m analysis.plot_results
 
 # 6. Run test suite
 pytest tests/ -v
+
+# 7. Or launch the showcase + simulator locally
+streamlit run app.py
 ```
 
 **Expected quick-start output (run_model.py):**
@@ -211,4 +225,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ### Acknowledgements
 
-Methodological inspiration: Mesa framework (Project Mesa), SALib sensitivity toolkit, and the agent-based food systems modelling literature (AgriPoliS, CRAFTY, APSIM-linked ABMs). Field calibration grounded in IITA BASICS-II cassava/maize programme data and XchangeBox Solutions operational product data.
+Methodological inspiration: Mesa framework (Project Mesa), SALib sensitivity toolkit, and the agent-based food systems modelling literature (AgriPoliS, CRAFTY, APSIM-linked ABMs). Field calibration grounded in XchangeBox Solutions operational product data.

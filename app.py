@@ -1,14 +1,48 @@
+"""
+KidashiSim -- public landing page
+==================================
+
+Structure copied deliberately from the GROCERYsim reference (hero with
+a live figure, a Case Studies grid, a Documentation view, an About
+modal) -- NOT its slider-and-card simulator. The only "engine" here is
+FIG 01 in components/live_figure.py; everything else is presentation.
+
+Run:
+    pip install streamlit
+    streamlit run app.py
+
+Three things to edit before you publish, all marked EDIT ME below:
+    1. GITHUB_URL              -- your real repo
+    2. CASE_STUDIES "soon"     -- placeholder roadmap cards, swap for real ones
+    3. STRINGS["EN"]["about_citation"] etc. -- confirm citation format
+
+TRANSLATIONS: FR/ES/HA cover all navigation, hero copy, headings and
+labels. Table data (agent names, shock-regime IDs), the author bio,
+citation and license are kept in English/original form in every
+language on purpose -- they're identifiers or academic conventions,
+not prose. FR/ES are solid; HA is a first-pass machine draft and
+should get a native-speaker pass before this goes fully public.
+"""
+
+
 from __future__ import annotations
+from model.model import KidashiModel
+from components.live_figure import render_kidashi_live_figure
+import streamlit as st
+from matplotlib.ticker import FuncFormatter
+import matplotlib.pyplot as plt
 from pathlib import Path
 
-import streamlit as st
+import matplotlib
+# headless backend -- no display server on a Streamlit host
+matplotlib.use("Agg")
 
-from components.live_figure import render_kidashi_live_figure
 
-
+# ---------------------------------------------------------------------------
+# EDIT ME
 GITHUB_URL = "https://github.com/Adedeji-Taiwo/kidashi_abm"
 MANUAL_PDF_PATH = Path(__file__).parent / "KidashiSim_User_Manual.pdf"
-
+# ---------------------------------------------------------------------------
 
 st.set_page_config(
     page_title="KidashiSim \u00b7 ABM",
@@ -34,7 +68,40 @@ STRINGS = {
         "badge_live": "LIVE",
         "badge_soon": "SOON",
         "coming_soon": "Coming soon",
-        "view_model": "View the model \u2192",
+        "launch_simulator": "Launch simulator \u2192",
+        "sim_eyebrow": "LIVE SIMULATOR",
+        "sim_title": "Kidashi Simulator",
+        "sim_sub": "Configure a scenario, run the model, and inspect the headline indicators.",
+        "sim_controls_h": "Scenario controls",
+        "sim_steps": "Simulation steps (seasons)",
+        "sim_num_farmers": "Farmer agents",
+        "sim_num_traders": "Trader agents",
+        "sim_fintech": "Fintech penetration",
+        "sim_trade_openness": "Trade openness",
+        "sim_diversity_policy": "Diversity policy",
+        "sim_shock_regime": "Shock regime",
+        "sim_seed": "Random seed",
+        "sim_run_btn": "Run simulation",
+        "sim_running": "Running simulation \u2026",
+        "sim_results_eyebrow": "SIMULATION RESULTS",
+        "sim_results_title": "Results",
+        "sim_empty_state": "Set your parameters above and click \u201cRun simulation\u201d to see results here.",
+        "metric_wealth": "Mean farmer wealth",
+        "metric_maize": "Maize price",
+        "metric_sorghum": "Sorghum price",
+        "metric_tomato": "Tomato price",
+        "metric_diversity": "Diversity index",
+        "metric_par30": "PAR30 (credit risk)",
+        "chart_prices_title": "Farmgate prices over time",
+        "chart_wealth_title": "Mean farmer wealth over time",
+        "chart_diversity_title": "Diversity index over time",
+        "axis_step": "Step (season)",
+        "axis_price": "Farmgate price (NGN/MT)",
+        "axis_wealth": "Mean farmer wealth (NGN)",
+        "axis_diversity": "Mean diversity index (H\u2032)",
+        "crop_maize": "Maize",
+        "crop_sorghum": "Sorghum",
+        "crop_tomato": "Tomato",
         "docs_eyebrow": "MODEL ARCHITECTURE",
         "docs_title": "Documentation",
         "docs_sub": "A short reference. Full method notes and code live in the GitHub repository.",
@@ -77,7 +144,40 @@ STRINGS = {
         "badge_live": "EN DIRECT",
         "badge_soon": "BIENT\u00d4T",
         "coming_soon": "Bient\u00f4t disponible",
-        "view_model": "Voir le mod\u00e8le \u2192",
+        "launch_simulator": "Lancer le simulateur \u2192",
+        "sim_eyebrow": "SIMULATEUR EN DIRECT",
+        "sim_title": "Simulateur Kidashi",
+        "sim_sub": "Configurez un sc\u00e9nario, ex\u00e9cutez le mod\u00e8le et consultez les indicateurs cl\u00e9s.",
+        "sim_controls_h": "Param\u00e8tres du sc\u00e9nario",
+        "sim_steps": "\u00c9tapes de simulation (saisons)",
+        "sim_num_farmers": "Agriculteurs (agents)",
+        "sim_num_traders": "Commer\u00e7ants (agents)",
+        "sim_fintech": "P\u00e9n\u00e9tration fintech",
+        "sim_trade_openness": "Ouverture commerciale",
+        "sim_diversity_policy": "Politique de diversit\u00e9",
+        "sim_shock_regime": "R\u00e9gime de choc",
+        "sim_seed": "Graine al\u00e9atoire",
+        "sim_run_btn": "Lancer la simulation",
+        "sim_running": "Simulation en cours \u2026",
+        "sim_results_eyebrow": "R\u00c9SULTATS DE LA SIMULATION",
+        "sim_results_title": "R\u00e9sultats",
+        "sim_empty_state": "D\u00e9finissez vos param\u00e8tres ci-dessus puis cliquez sur \u00ab\u00a0Lancer la simulation\u00a0\u00bb pour voir les r\u00e9sultats.",
+        "metric_wealth": "Richesse moyenne des agriculteurs",
+        "metric_maize": "Prix du ma\u00efs",
+        "metric_sorghum": "Prix du sorgho",
+        "metric_tomato": "Prix de la tomate",
+        "metric_diversity": "Indice de diversit\u00e9",
+        "metric_par30": "PAR30 (risque de cr\u00e9dit)",
+        "chart_prices_title": "Prix au champ dans le temps",
+        "chart_wealth_title": "Richesse moyenne des agriculteurs dans le temps",
+        "chart_diversity_title": "Indice de diversit\u00e9 dans le temps",
+        "axis_step": "\u00c9tape (saison)",
+        "axis_price": "Prix au champ (NGN/MT)",
+        "axis_wealth": "Richesse moyenne des agriculteurs (NGN)",
+        "axis_diversity": "Indice de diversit\u00e9 moyen (H\u2032)",
+        "crop_maize": "Ma\u00efs",
+        "crop_sorghum": "Sorgho",
+        "crop_tomato": "Tomate",
         "docs_eyebrow": "ARCHITECTURE DU MOD\u00c8LE",
         "docs_title": "Documentation",
         "docs_sub": "R\u00e9f\u00e9rence succincte. Les notes m\u00e9thodologiques compl\u00e8tes et le code se trouvent sur le d\u00e9p\u00f4t GitHub.",
@@ -120,7 +220,40 @@ STRINGS = {
         "badge_live": "EN VIVO",
         "badge_soon": "PR\u00d3XIMAMENTE",
         "coming_soon": "Pr\u00f3ximamente",
-        "view_model": "Ver el modelo \u2192",
+        "launch_simulator": "Iniciar el simulador \u2192",
+        "sim_eyebrow": "SIMULADOR EN VIVO",
+        "sim_title": "Simulador Kidashi",
+        "sim_sub": "Configure un escenario, ejecute el modelo y consulte los indicadores clave.",
+        "sim_controls_h": "Par\u00e1metros del escenario",
+        "sim_steps": "Pasos de simulaci\u00f3n (temporadas)",
+        "sim_num_farmers": "Agricultores (agentes)",
+        "sim_num_traders": "Comerciantes (agentes)",
+        "sim_fintech": "Penetraci\u00f3n fintech",
+        "sim_trade_openness": "Apertura comercial",
+        "sim_diversity_policy": "Pol\u00edtica de diversidad",
+        "sim_shock_regime": "R\u00e9gimen de choque",
+        "sim_seed": "Semilla aleatoria",
+        "sim_run_btn": "Ejecutar simulaci\u00f3n",
+        "sim_running": "Ejecutando simulaci\u00f3n \u2026",
+        "sim_results_eyebrow": "RESULTADOS DE LA SIMULACI\u00d3N",
+        "sim_results_title": "Resultados",
+        "sim_empty_state": "Defina sus par\u00e1metros arriba y haga clic en \u00abEjecutar simulaci\u00f3n\u00bb para ver los resultados.",
+        "metric_wealth": "Riqueza media del agricultor",
+        "metric_maize": "Precio del ma\u00edz",
+        "metric_sorghum": "Precio del sorgo",
+        "metric_tomato": "Precio del tomate",
+        "metric_diversity": "\u00cdndice de diversidad",
+        "metric_par30": "PAR30 (riesgo crediticio)",
+        "chart_prices_title": "Precios en finca a lo largo del tiempo",
+        "chart_wealth_title": "Riqueza media del agricultor a lo largo del tiempo",
+        "chart_diversity_title": "\u00cdndice de diversidad a lo largo del tiempo",
+        "axis_step": "Paso (temporada)",
+        "axis_price": "Precio en finca (NGN/MT)",
+        "axis_wealth": "Riqueza media del agricultor (NGN)",
+        "axis_diversity": "\u00cdndice de diversidad medio (H\u2032)",
+        "crop_maize": "Ma\u00edz",
+        "crop_sorghum": "Sorgo",
+        "crop_tomato": "Tomate",
         "docs_eyebrow": "ARQUITECTURA DEL MODELO",
         "docs_title": "Documentaci\u00f3n",
         "docs_sub": "Una referencia breve. Las notas metodol\u00f3gicas completas y el c\u00f3digo est\u00e1n en el repositorio de GitHub.",
@@ -163,7 +296,40 @@ STRINGS = {
         "badge_live": "MAI GUDANA",
         "badge_soon": "NAN BA DA JIMAWA BA",
         "coming_soon": "Nan ba da jimawa ba",
-        "view_model": "Duba tsarin \u2192",
+        "launch_simulator": "Fara kwaikwayo \u2192",
+        "sim_eyebrow": "KWAIKWAYO KAI TSAYE",
+        "sim_title": "Na\u2019urar Kwaikwayo ta Kidashi",
+        "sim_sub": "Saita yanayin gwaji, gudanar da samfurin, sannan ka duba manyan alkaluma.",
+        "sim_controls_h": "Ma\u2019aunan yanayin gwaji",
+        "sim_steps": "Matakan kwaikwayo (lokutan noma)",
+        "sim_num_farmers": "Wakilan manoma",
+        "sim_num_traders": "Wakilan \u2019yan kasuwa",
+        "sim_fintech": "Yaduwar fintech",
+        "sim_trade_openness": "Bu\u0257ewar kasuwanci",
+        "sim_diversity_policy": "Manufar bambanci",
+        "sim_shock_regime": "Nau\u2019in girgiza",
+        "sim_seed": "Iri na bazuwar lamba",
+        "sim_run_btn": "Gudanar da kwaikwayo",
+        "sim_running": "Ana gudanar da kwaikwayo \u2026",
+        "sim_results_eyebrow": "SAKAMAKON KWAIKWAYO",
+        "sim_results_title": "Sakamako",
+        "sim_empty_state": "Saita ma\u2019aunanka a sama sannan ka danna \u201cGudanar da kwaikwayo\u201d domin ganin sakamako a nan.",
+        "metric_wealth": "Matsakaicin dukiyar manomi",
+        "metric_maize": "Farashin masara",
+        "metric_sorghum": "Farashin dawa",
+        "metric_tomato": "Farashin tumatir",
+        "metric_diversity": "Alamar bambanci",
+        "metric_par30": "PAR30 (ha\u0257arin bashi)",
+        "chart_prices_title": "Farashin gona cikin lokaci",
+        "chart_wealth_title": "Matsakaicin dukiyar manomi cikin lokaci",
+        "chart_diversity_title": "Alamar bambanci cikin lokaci",
+        "axis_step": "Mataki (lokacin noma)",
+        "axis_price": "Farashin gona (NGN/MT)",
+        "axis_wealth": "Matsakaicin dukiyar manomi (NGN)",
+        "axis_diversity": "Matsakaicin alamar bambanci (H\u2032)",
+        "crop_maize": "Masara",
+        "crop_sorghum": "Dawa",
+        "crop_tomato": "Tumatir",
         "docs_eyebrow": "TSARIN SAMFURI",
         "docs_title": "Takardun Bayani",
         "docs_sub": "Ta\u0199aitaccen bayani. Cikakken bayani da lambar shirin suna nan a shafin GitHub.",
@@ -230,7 +396,7 @@ def init_navigation_state() -> None:
         if incoming_lang in STRINGS:
             st.session_state["lang"] = incoming_lang
 
-    if incoming_view in ("home", "cases", "docs"):
+    if incoming_view in ("home", "cases", "docs", "simulator"):
         st.session_state["view"] = incoming_view
 
     if has_navigation_signal:
@@ -449,6 +615,45 @@ def inject_css() -> None:
         }
         .about-close:hover { color: #0b3a40; }
 
+        /* ---------- simulator: metric cards ---------- */
+        .metric-card {
+            background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+            padding: 1.05rem 1.2rem; height: 100%; box-sizing: border-box;
+        }
+        .metric-card .metric-label {
+            display: block; color: var(--cyan); font-size: 0.68rem; font-weight: 800;
+            letter-spacing: 0.10em; text-transform: uppercase; margin-bottom: 0.45rem;
+        }
+        .metric-card .metric-value {
+            display: block; color: var(--gold); font-size: 1.5rem; font-weight: 900;
+            letter-spacing: -0.01em; line-height: 1.15;
+        }
+        .metric-card .metric-unit { color: var(--muted); font-size: 0.7rem; font-weight: 700; margin-left: 0.25rem; }
+
+        /* ---------- simulator: theme native input widgets ---------- */
+        [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label {
+            color: var(--cream) !important; font-weight: 700 !important; font-size: 0.82rem !important;
+        }
+        [data-baseweb="input"], [data-baseweb="select"] > div {
+            background: rgba(5,25,31,0.45) !important; border-color: var(--line-strong) !important;
+            color: var(--cream) !important; border-radius: 3px !important;
+        }
+        [data-baseweb="select"] div, [data-baseweb="select"] span { color: var(--cream) !important; }
+        [role="listbox"] { background: #0a2c32 !important; border: 1px solid var(--line-strong) !important; }
+        [role="option"] { color: var(--cream) !important; }
+        [role="option"]:hover, [aria-selected="true"][role="option"] { background: rgba(126,223,224,0.14) !important; }
+        [data-testid="stNumberInputStepUp"], [data-testid="stNumberInputStepDown"] {
+            background: rgba(5,25,31,0.45) !important; border-color: var(--line-strong) !important; color: var(--cream) !important;
+        }
+        [data-baseweb="slider"] div[style*="background-color"] { background-color: var(--gold) !important; }
+        [data-baseweb="slider"] [role="slider"] {
+            background-color: var(--gold) !important; border-color: var(--gold) !important;
+            box-shadow: 0 0 0 3px rgba(242, 184, 75, 0.25) !important;
+        }
+        [data-testid="stSlider"] [data-testid="stTickBarMin"],
+        [data-testid="stSlider"] [data-testid="stTickBarMax"],
+        [data-testid="stThumbValue"] { color: var(--muted) !important; }
+
         @media (max-width: 900px) {
             .block-container,
             [data-testid="stMainBlockContainer"] {
@@ -612,7 +817,6 @@ CASE_STUDIES = [
             <path d="M32,28 C26,25 22,29 24,34 C28,32 31,30 32,28Z" fill="currentColor" opacity="0.35"/>
             <circle cx="32" cy="46" r="7"/>
         </svg>""",
-        "url": GITHUB_URL,
     },
     {
         "flag": '<img class="flag-img" src="https://flagcdn.com/w40/gh.png" alt="Ghana flag">', "status": "soon", "tag": "FINTECH \u00b7 WEST AFRICA",
@@ -677,12 +881,17 @@ def render_cases(lang: str) -> None:
             )
             st.write("")
             if study["status"] == "live":
-                # GitHub links correctly pop into new tabs
-                st.link_button(
-                    S["view_model"],
-                    study["url"],
+                # In-page navigation (same pattern as the hero buttons) --
+                # this intentionally does NOT use st.link_button, so it
+                # never opens a new tab and never prints a query string.
+                if st.button(
+                    S["launch_simulator"],
+                    key=f"launch_{study['title']}",
+                    type="primary",
                     use_container_width=True,
-                )
+                ):
+                    st.session_state["view"] = "simulator"
+                    st.rerun()
             else:
                 st.button(
                     S["coming_soon"],
@@ -765,6 +974,269 @@ def render_docs(lang: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Simulator: chart theming helpers
+# ---------------------------------------------------------------------------
+
+_CHART_BG = "#0a2c32"
+_CHART_GRID = "#1c4a50"
+_CHART_TEXT = "#dcecEB"
+_CHART_MUTED = "#93b3b1"
+_CHART_GOLD = "#f2b84b"
+_CHART_CYAN = "#7edfe0"
+_CHART_GREEN = "#3fbd7a"
+_CHART_ORANGE = "#eba654"
+
+
+def _themed_fig(figsize: tuple = (9, 3.2)):
+    """A matplotlib figure/axes pair pre-styled to match the app's dark palette."""
+    fig, ax = plt.subplots(figsize=figsize, dpi=140)
+    fig.patch.set_facecolor(_CHART_BG)
+    ax.set_facecolor(_CHART_BG)
+    ax.tick_params(colors=_CHART_MUTED, labelsize=8.5)
+    for spine in ax.spines.values():
+        spine.set_color(_CHART_GRID)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.grid(True, color=_CHART_GRID, linewidth=0.7, alpha=0.6)
+    ax.set_axisbelow(True)
+    return fig, ax
+
+
+def _style_legend(ax):
+    # loc="best" (rather than a fixed corner) because the data shape varies
+    # scenario to scenario -- and it stays inside the axes bbox on purpose,
+    # so it can never be clipped regardless of how the host crops the figure.
+    leg = ax.legend(loc="best", frameon=True, fontsize=8.5,
+                    labelcolor=_CHART_TEXT, handlelength=1.4)
+    leg.get_frame().set_facecolor(_CHART_BG)
+    leg.get_frame().set_edgecolor(_CHART_GRID)
+    leg.get_frame().set_alpha(0.88)
+    return leg
+
+
+def _scaled_ngn_formatter(max_val: float) -> FuncFormatter:
+    """Y-axis tick formatter that scales to k/M so labels stay readable."""
+    if max_val >= 1_000_000:
+        return FuncFormatter(lambda x, _pos: f"{x/1_000_000:,.1f}M")
+    if max_val >= 1_000:
+        return FuncFormatter(lambda x, _pos: f"{x/1_000:,.0f}k")
+    return FuncFormatter(lambda x, _pos: f"{x:,.0f}")
+
+
+def _format_ngn(value: float) -> str:
+    """Compact Naira string for metric cards, e.g. 105154855 -> '\u20a6105.2M'."""
+    sign = "-" if value < 0 else ""
+    value = abs(value)
+    if value >= 1_000_000:
+        return f"{sign}\u20a6{value/1_000_000:,.1f}M"
+    if value >= 1_000:
+        return f"{sign}\u20a6{value/1_000:,.1f}k"
+    return f"{sign}\u20a6{value:,.0f}"
+
+
+def _metric_card(label: str, value: str, unit: str = "") -> str:
+    unit_html = f'<span class="metric-unit">{unit}</span>' if unit else ""
+    return (
+        '<div class="metric-card">'
+        f'<span class="metric-label">{label}</span>'
+        f'<span class="metric-value">{value}{unit_html}</span>'
+        '</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Simulator: cached model run
+# ---------------------------------------------------------------------------
+
+@st.cache_data(show_spinner=False)
+def run_simulation(
+    steps: int,
+    num_farmers: int,
+    num_traders: int,
+    fintech_penetration: float,
+    diversity_policy: str,
+    shock_regime: str,
+    trade_openness: float,
+    seed: int,
+):
+    """Run KidashiModel for `steps` seasons and return the model-level dataframe.
+
+    Cached on its (scalar, hashable) arguments -- re-running the exact same
+    scenario again is instant instead of re-simulating from scratch.
+    """
+    model = KidashiModel(
+        num_farmers=num_farmers,
+        num_traders=num_traders,
+        fintech_penetration=fintech_penetration,
+        diversity_policy=diversity_policy,
+        shock_regime=shock_regime,
+        trade_openness=trade_openness,
+        seed=seed,
+    )
+    for _ in range(steps):
+        model.step()
+    return model.datacollector.get_model_vars_dataframe()
+
+
+# ---------------------------------------------------------------------------
+# Simulator view
+# ---------------------------------------------------------------------------
+
+def render_simulator(lang: str) -> None:
+    S = STRINGS[lang]
+    top_bar(lang, view="simulator", show_crumb=True)
+    st.markdown(
+        f'<div class="page-head"><div class="eyebrow">{S["sim_eyebrow"]}</div>'
+        f'<h1>{S["sim_title"]}</h1><p>{S["sim_sub"]}</p></div>',
+        unsafe_allow_html=True,
+    )
+
+    # -- Controls -----------------------------------------------------------
+    st.markdown(
+        f'<div class="docs-section"><h3>{S["sim_controls_h"]}</h3>', unsafe_allow_html=True)
+
+    r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+    with r1c1:
+        steps = st.slider(S["sim_steps"], 10, 80, 40)
+    with r1c2:
+        num_farmers = st.slider(S["sim_num_farmers"], 50, 500, 100)
+    with r1c3:
+        num_traders = st.slider(S["sim_num_traders"], 5, 20, 10)
+    with r1c4:
+        seed = int(st.number_input(S["sim_seed"], value=42, step=1))
+
+    r2c1, r2c2, r2c3, r2c4 = st.columns(4)
+    with r2c1:
+        fintech_penetration = st.slider(S["sim_fintech"], 0.0, 1.0, 0.40)
+    with r2c2:
+        trade_openness = st.slider(S["sim_trade_openness"], 0.0, 1.0, 0.20)
+    with r2c3:
+        diversity_policy = st.selectbox(
+            S["sim_diversity_policy"], ["none", "incentive", "mandate"])
+    with r2c4:
+        shock_regime = st.selectbox(
+            S["sim_shock_regime"],
+            ["baseline", "climate_stress", "trade_disruption", "compound"])
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    run_clicked = st.button(S["sim_run_btn"], type="primary")
+
+    if run_clicked:
+        with st.spinner(S["sim_running"]):
+            model_df = run_simulation(
+                steps=steps,
+                num_farmers=num_farmers,
+                num_traders=num_traders,
+                fintech_penetration=fintech_penetration,
+                diversity_policy=diversity_policy,
+                shock_regime=shock_regime,
+                trade_openness=trade_openness,
+                seed=seed,
+            )
+        st.session_state["sim_model_df"] = model_df
+        st.session_state["sim_last_params"] = dict(
+            steps=steps, num_farmers=num_farmers, num_traders=num_traders,
+            shock_regime=shock_regime, diversity_policy=diversity_policy, seed=seed,
+        )
+
+    model_df = st.session_state.get("sim_model_df")
+
+    # -- Results --------------------------------------------------------
+    st.markdown(
+        '<div class="page-head" style="margin-top:2.2rem;">'
+        f'<div class="eyebrow">{S["sim_results_eyebrow"]}</div>'
+        f'<h1>{S["sim_results_title"]}</h1></div>',
+        unsafe_allow_html=True,
+    )
+
+    if model_df is None or model_df.empty:
+        st.caption(S["sim_empty_state"])
+        return
+
+    p = st.session_state["sim_last_params"]
+    st.caption(
+        f"{S['sim_steps']}: {p['steps']}  \u00b7  {S['sim_num_farmers']}: {p['num_farmers']}  \u00b7  "
+        f"{S['sim_num_traders']}: {p['num_traders']}  \u00b7  {S['sim_shock_regime']}: {p['shock_regime']}  \u00b7  "
+        f"{S['sim_diversity_policy']}: {p['diversity_policy']}  \u00b7  {S['sim_seed']}: {p['seed']}"
+    )
+
+    last = model_df.iloc[-1]
+
+    # -- Metric cards -----------------------------------------------------
+    cards = [
+        (S["metric_wealth"], _format_ngn(last["mean_wealth"]), ""),
+        (S["metric_maize"], _format_ngn(last["price_maize"]), "/MT"),
+        (S["metric_sorghum"], _format_ngn(last["price_sorghum"]), "/MT"),
+        (S["metric_tomato"], _format_ngn(last["price_tomato"]), "/MT"),
+        (S["metric_diversity"], f"{last['mean_diversity_index']:.2f}", ""),
+        (S["metric_par30"], f"{last['par30'] * 100:.1f}%", ""),
+    ]
+    row1 = st.columns(3, gap="medium")
+    for col, (label, value, unit) in zip(row1, cards[:3]):
+        col.markdown(_metric_card(label, value, unit), unsafe_allow_html=True)
+    row2 = st.columns(3, gap="medium")
+    for col, (label, value, unit) in zip(row2, cards[3:]):
+        col.markdown(_metric_card(label, value, unit), unsafe_allow_html=True)
+
+    st.write("")
+
+    # -- Chart 1: farmgate prices over time --------------------------------
+    st.markdown(
+        f'<div class="docs-section"><h3>{S["chart_prices_title"]}</h3>', unsafe_allow_html=True)
+    fig, ax = _themed_fig()
+    price_cols = ["price_maize", "price_sorghum", "price_tomato"]
+    fmt = _scaled_ngn_formatter(float(model_df[price_cols].values.max()))
+    ax.plot(model_df["step"], model_df["price_maize"],
+            color=_CHART_GOLD, linewidth=2, label=S["crop_maize"])
+    ax.plot(model_df["step"], model_df["price_sorghum"],
+            color=_CHART_CYAN, linewidth=2, label=S["crop_sorghum"])
+    ax.plot(model_df["step"], model_df["price_tomato"],
+            color=_CHART_GREEN, linewidth=2, label=S["crop_tomato"])
+    ax.yaxis.set_major_formatter(fmt)
+    ax.set_xlabel(S["axis_step"], color=_CHART_MUTED, fontsize=9)
+    ax.set_ylabel(S["axis_price"], color=_CHART_MUTED, fontsize=9)
+    _style_legend(ax)
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # -- Chart 2: mean farmer wealth over time -----------------------------
+    st.markdown(
+        f'<div class="docs-section"><h3>{S["chart_wealth_title"]}</h3>', unsafe_allow_html=True)
+    fig, ax = _themed_fig()
+    fmt = _scaled_ngn_formatter(float(model_df["mean_wealth"].values.max()))
+    ax.plot(model_df["step"], model_df["mean_wealth"],
+            color=_CHART_ORANGE, linewidth=2.2)
+    ax.fill_between(model_df["step"], model_df["mean_wealth"],
+                    color=_CHART_ORANGE, alpha=0.10)
+    ax.yaxis.set_major_formatter(fmt)
+    ax.set_xlabel(S["axis_step"], color=_CHART_MUTED, fontsize=9)
+    ax.set_ylabel(S["axis_wealth"], color=_CHART_MUTED, fontsize=9)
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # -- Chart 3: diversity index over time ---------------------------------
+    st.markdown(
+        f'<div class="docs-section"><h3>{S["chart_diversity_title"]}</h3>', unsafe_allow_html=True)
+    fig, ax = _themed_fig()
+    ax.plot(model_df["step"], model_df["mean_diversity_index"],
+            color=_CHART_GREEN, linewidth=2.2)
+    ax.fill_between(
+        model_df["step"], model_df["mean_diversity_index"], color=_CHART_GREEN, alpha=0.10)
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel(S["axis_step"], color=_CHART_MUTED, fontsize=9)
+    ax.set_ylabel(S["axis_diversity"], color=_CHART_MUTED, fontsize=9)
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------------------
 # Router
 # ---------------------------------------------------------------------------
 
@@ -785,6 +1257,8 @@ def main() -> None:
         render_cases(lang)
     elif view == "docs":
         render_docs(lang)
+    elif view == "simulator":
+        render_simulator(lang)
     else:
         render_home(lang)
 

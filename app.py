@@ -1,30 +1,3 @@
-"""
-KidashiSim -- public landing page
-==================================
-
-Structure copied deliberately from the GROCERYsim reference (hero with
-a live figure, a Case Studies grid, a Documentation view, an About
-modal) -- NOT its slider-and-card simulator. The only "engine" here is
-FIG 01 in components/live_figure.py; everything else is presentation.
-
-Run:
-    pip install streamlit
-    streamlit run app.py
-
-Three things to edit before you publish, all marked EDIT ME below:
-    1. GITHUB_URL              -- your real repo
-    2. CASE_STUDIES "soon"     -- placeholder roadmap cards, swap for real ones
-    3. STRINGS["EN"]["about_citation"] etc. -- confirm citation format
-
-TRANSLATIONS: FR/ES/HA cover all navigation, hero copy, headings and
-labels. Table data (agent names, shock-regime IDs), the author bio,
-citation and license are kept in English/original form in every
-language on purpose -- they're identifiers or academic conventions,
-not prose. FR/ES are solid; HA is a first-pass machine draft and
-should get a native-speaker pass before this goes fully public.
-"""
-
-
 from __future__ import annotations
 from model.model import KidashiModel
 from components.live_figure import render_kidashi_live_figure
@@ -38,11 +11,9 @@ import matplotlib
 matplotlib.use("Agg")
 
 
-# ---------------------------------------------------------------------------
-# EDIT ME
 GITHUB_URL = "https://github.com/Adedeji-Taiwo/kidashi_abm"
 MANUAL_PDF_PATH = Path(__file__).parent / "KidashiSim_User_Manual.pdf"
-# ---------------------------------------------------------------------------
+
 
 st.set_page_config(
     page_title="KidashiSim \u00b7 ABM",
@@ -405,9 +376,8 @@ def init_navigation_state() -> None:
         st.rerun()
 
 
-# ---------------------------------------------------------------------------
 # Design system
-# ---------------------------------------------------------------------------
+
 
 def inject_css() -> None:
     st.markdown(
@@ -721,9 +691,7 @@ def top_bar(lang: str, view: str, about_open: bool = False, show_crumb: bool = F
     )
 
 
-# ---------------------------------------------------------------------------
 # About overlay
-# ---------------------------------------------------------------------------
 
 def render_about_overlay(lang: str, view: str) -> None:
     S = STRINGS[lang]
@@ -749,9 +717,7 @@ def render_about_overlay(lang: str, view: str) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
 # Views
-# ---------------------------------------------------------------------------
 
 def render_home(lang: str) -> None:
     S = STRINGS[lang]
@@ -768,11 +734,6 @@ def render_home(lang: str) -> None:
             unsafe_allow_html=True,
         )
 
-        # -------------------------------------------------------------------------
-        # THE FIX: By utilizing Streamlit's native button routing rather than HTML
-        # hrefs, there are ZERO new tabs opened and ZERO query strings printed
-        # in the address bar. It functions seamlessly inline.
-        # -------------------------------------------------------------------------
         btn_col1, btn_col2, btn_col3, _ = st.columns([1, 1, 1, 1.2])
 
         with btn_col1:
@@ -973,10 +934,7 @@ def render_docs(lang: str) -> None:
     st.link_button(S["docs_github"].replace("&amp;", "&"), GITHUB_URL)
 
 
-# ---------------------------------------------------------------------------
 # Simulator: chart theming helpers
-# ---------------------------------------------------------------------------
-
 _CHART_BG = "#0a2c32"
 _CHART_GRID = "#1c4a50"
 _CHART_TEXT = "#dcecEB"
@@ -1003,9 +961,6 @@ def _themed_fig(figsize: tuple = (9, 3.2)):
 
 
 def _style_legend(ax):
-    # loc="best" (rather than a fixed corner) because the data shape varies
-    # scenario to scenario -- and it stays inside the axes bbox on purpose,
-    # so it can never be clipped regardless of how the host crops the figure.
     leg = ax.legend(loc="best", frameon=True, fontsize=8.5,
                     labelcolor=_CHART_TEXT, handlelength=1.4)
     leg.get_frame().set_facecolor(_CHART_BG)
@@ -1044,9 +999,7 @@ def _metric_card(label: str, value: str, unit: str = "") -> str:
     )
 
 
-# ---------------------------------------------------------------------------
 # Simulator: cached model run
-# ---------------------------------------------------------------------------
 
 @st.cache_data(show_spinner=False)
 def run_simulation(
@@ -1078,9 +1031,7 @@ def run_simulation(
     return model.datacollector.get_model_vars_dataframe()
 
 
-# ---------------------------------------------------------------------------
 # Simulator view
-# ---------------------------------------------------------------------------
 
 def render_simulator(lang: str) -> None:
     S = STRINGS[lang]
@@ -1091,7 +1042,7 @@ def render_simulator(lang: str) -> None:
         unsafe_allow_html=True,
     )
 
-    # -- Controls -----------------------------------------------------------
+    # Controls
     st.markdown(
         f'<div class="docs-section"><h3>{S["sim_controls_h"]}</h3>', unsafe_allow_html=True)
 
@@ -1142,7 +1093,7 @@ def render_simulator(lang: str) -> None:
 
     model_df = st.session_state.get("sim_model_df")
 
-    # -- Results --------------------------------------------------------
+    # Results
     st.markdown(
         '<div class="page-head" style="margin-top:2.2rem;">'
         f'<div class="eyebrow">{S["sim_results_eyebrow"]}</div>'
@@ -1163,7 +1114,7 @@ def render_simulator(lang: str) -> None:
 
     last = model_df.iloc[-1]
 
-    # -- Metric cards -----------------------------------------------------
+    # Metric cards
     cards = [
         (S["metric_wealth"], _format_ngn(last["mean_wealth"]), ""),
         (S["metric_maize"], _format_ngn(last["price_maize"]), "/MT"),
@@ -1181,7 +1132,7 @@ def render_simulator(lang: str) -> None:
 
     st.write("")
 
-    # -- Chart 1: farmgate prices over time --------------------------------
+    # Chart 1: farmgate prices over time
     st.markdown(
         f'<div class="docs-section"><h3>{S["chart_prices_title"]}</h3>', unsafe_allow_html=True)
     fig, ax = _themed_fig()
@@ -1202,7 +1153,7 @@ def render_simulator(lang: str) -> None:
     plt.close(fig)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # -- Chart 2: mean farmer wealth over time -----------------------------
+    # Chart 2: mean farmer wealth over time
     st.markdown(
         f'<div class="docs-section"><h3>{S["chart_wealth_title"]}</h3>', unsafe_allow_html=True)
     fig, ax = _themed_fig()
@@ -1219,7 +1170,7 @@ def render_simulator(lang: str) -> None:
     plt.close(fig)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # -- Chart 3: diversity index over time ---------------------------------
+    #  Chart 3: diversity index over time
     st.markdown(
         f'<div class="docs-section"><h3>{S["chart_diversity_title"]}</h3>', unsafe_allow_html=True)
     fig, ax = _themed_fig()
@@ -1236,9 +1187,8 @@ def render_simulator(lang: str) -> None:
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ---------------------------------------------------------------------------
 # Router
-# ---------------------------------------------------------------------------
+
 
 def main() -> None:
     # 1. Initialize State & Clear URL signals
